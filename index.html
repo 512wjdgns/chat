@@ -268,7 +268,7 @@ sendToDiscord(myName, text);
 function sendToDiscord(username, message) {
     if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes("api/webhooks/...")) return;
 
-    const contentWithLink = `${message}\n🔗바로가기: ${FIXED_LINK}`;
+    const contentWithLink = `메세지: ${message}\n🔗바로가기: ${FIXED_LINK}`;
 
     fetch(DISCORD_WEBHOOK_URL, {
         method: "POST",
