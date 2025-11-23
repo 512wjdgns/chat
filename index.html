@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dark Mode Chat</title>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.0.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212; /* 어두운 배경 */
+            color: #e0e0e0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 헤더 */
+        header {
+            background-color: #1f1f1f;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #gray;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* 채팅 영역 */
+   #chat-container {
+            flex: 1;
+            padding: 15px;
+            padding-bottom: 90px; 
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: #0d0d0d;
+        }
+
+        /* 메시지 공통 */
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sender-name {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            opacity: 0.6;
+            color: #ccc;
+        }
+
+        /* 상대방 메시지 (다크 그레이) */
+        .message.received {
+            align-self: flex-start;
+            background-color: #2c2c2c;
+            color: #ffffff;
+            border-bottom-left-radius: 4px;
+        }
+
+        /* 내 메시지 (다크 그린) */
+        .message.sent {
+            align-self: flex-end;
+            background-color: #005c4b;
+            color: #ffffff;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* 입력 영역 */
+#input-area {
+            position: fixed; /* 화면에 고정 */
+            bottom: 20px;    /* 바닥에서 20px 띄우기 */
+            left: 15px;      /* 좌우 여백 */
+            right: 15px;
+            
+            background-color: #1f1f1f; /* 입력창 배경색 */
+            padding: 8px 12px;
+            border-radius: 30px; 
+            border: 1px solid #333;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            
+            margin-bottom: env(safe-area-inset-bottom, 0);
+        }
+
+        #msg-input {
+            flex: 1;
+            background-color: transparent; 
+            border: none;
+            padding: 10px;
+            color: white;
+            font-size: 1rem;
+            outline: none; 
+        }
+
+        #msg-input::placeholder {
+            color: #666;
+        }
+
+        #send-btn {
+            background-color: #00a884;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;  
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        #send-btn:active {
+            transform: scale(0.95); 
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <span id="status-dot" style="background-color: orange;"></span>
+            <span id="header-title">연결 중...</span>
+        </div>
+        <button onclick="changeName()" style="background:none; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:10px; font-size:0.8rem; cursor:pointer;">이름 변경</button>
+    </header>
+
+    <div id="chat-container">
+        </div>
+
+    <div id="input-area">
+        <input type="text" id="msg-input" placeholder="메시지 입력..." autocomplete="off">
+        <button id="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+
+    <script>
+        const MY_PUB_KEY = "pub-c-9d5ec1e3-37b9-4f0e-987b-c64229cd3127"; 
+        const MY_SUB_KEY = "sub-c-728962a3-1021-4ca5-a8aa-31b7805e12e2"; 
+        const CHAT_ROOM_NAME = "채팅방1"; 
+
+        let pubnub;
+        const myUUID = 'user_' + Math.random().toString(36).substr(2, 9);
+        let myName = localStorage.getItem('chat_nickname') || "익명";
+
+        const chatContainer = document.getElementById('chat-container');
+        const statusDot = document.getElementById('status-dot');
+        const headerTitle = document.getElementById('header-title');
+
+        window.onload = function() {
+            if (MY_PUB_KEY.includes("입력") || MY_SUB_KEY.includes("입력")) {
+                alert("누락된 코드: KEY");
+                return;
+            }
+
+            if (!localStorage.getItem('chat_nickname')) {
+                const inputName = prompt("사용하실 닉네임을 입력하세요:", "사용자");
+                if(inputName) {
+                    myName = inputName;
+                    localStorage.setItem('chat_nickname', myName);
+                }
+            }
+
+            initPubNub();
+        };
+
+        function initPubNub() {
+            pubnub = new PubNub({
+                publishKey: MY_PUB_KEY,
+                subscribeKey: MY_SUB_KEY,
+                uuid: myUUID
+            });
+
+            pubnub.addListener({
+                status: function(statusEvent) {
+                    if (statusEvent.category === "PNConnectedCategory") {
+                        statusDot.style.backgroundColor = "#00a884"; 
+                        headerTitle.innerText = `온라인: ${myName}`;
+                    }
+                },
+                message: function(event) {
+                    displayMessage(event.message, event.publisher);
+                }
+            });
+
+            pubnub.subscribe({
+                channels: [CHAT_ROOM_NAME]
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            pubnub.publish({
+                channel: CHAT_ROOM_NAME,
+                message: { text: text, sender: myName }
+            });
+
+            input.value = '';
+            input.focus();
+        }
+
+        function displayMessage(msgData, publisherUUID) {
+            const msgDiv = document.createElement('div');
+            const isMe = (publisherUUID === myUUID);
+            
+            msgDiv.classList.add('message', isMe ? 'sent' : 'received');
+
+            if (!isMe) {
+                const nameSpan = document.createElement('div');
+                nameSpan.classList.add('sender-name');
+                nameSpan.innerText = msgData.sender;
+                msgDiv.appendChild(nameSpan);
+            }
+
+            const textSpan = document.createElement('div');
+            textSpan.innerText = msgData.text;
+            msgDiv.appendChild(textSpan);
+
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function changeName() {
+            const newName = prompt("변경할 이름을 입력하세요:", myName);
+            if (newName) {
+                myName = newName;
+                localStorage.setItem('chat_nickname', myName);
+                headerTitle.innerText = `온라인: ${myName}`;
+            }
+        }
+
+        // 엔터키 전송
+        document.getElementById('msg-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
