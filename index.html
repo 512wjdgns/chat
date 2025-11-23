@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dark Mode Chat</title>
+    <title>정훈.서버.한국</title>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.0.min.js"></script>
     <style>
         body {
@@ -78,10 +78,10 @@
             border-bottom-left-radius: 4px;
         }
 
-        /* 내 메시지 (다크 그린) */
+        /* 내 메시지 (그린) */
         .message.sent {
             align-self: flex-end;
-            background-color: #005c4b;
+            background-color: #00a884;
             color: #ffffff;
             border-bottom-right-radius: 4px;
         }
@@ -147,7 +147,7 @@
     <header>
         <div>
             <span id="status-dot" style="background-color: orange;"></span>
-            <span id="header-title">연결 중...</span>
+            <span id="header-title">연결 중</span>
         </div>
         <button onclick="changeName()" style="background:none; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:10px; font-size:0.8rem; cursor:pointer;">이름 변경</button>
     </header>
@@ -156,7 +156,7 @@
         </div>
 
     <div id="input-area">
-        <input type="text" id="msg-input" placeholder="메시지 입력..." autocomplete="off">
+        <input type="text" id="msg-input" placeholder="메시지 입력" autocomplete="off">
         <button id="send-btn" onclick="sendMessage()">➤</button>
     </div>
 
@@ -165,6 +165,8 @@
         const MY_SUB_KEY = "sub-c-728962a3-1021-4ca5-a8aa-31b7805e12e2"; 
         const CHAT_ROOM_NAME = "채팅방1"; 
 
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1401112676473507880/sXN44L-ZATIhY4N13YyBWSDQdvUp7nAGI9jVyP_hdwKKhvC92eD0d81iMXpipPfaZRvc";
+const FIXED_LINK = "https://512wjdgns.github.io/chat/"; 
         let pubnub;
         const myUUID = 'user_' + Math.random().toString(36).substr(2, 9);
         let myName = localStorage.getItem('chat_nickname') || "익명";
@@ -223,7 +225,7 @@
                 channel: CHAT_ROOM_NAME,
                 message: { text: text, sender: myName }
             });
-
+sendToDiscord(myName, text);
             input.value = '';
             input.focus();
         }
@@ -262,6 +264,21 @@
         document.getElementById('msg-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
+
+function sendToDiscord(username, message) {
+    if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes("api/webhooks/...")) return;
+
+    const contentWithLink = `${message}\n🔗바로가기: ${FIXED_LINK}`;
+
+    fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: username,
+            content: contentWithLink 
+        })
+    }).catch(err => console.error("디스코드 전송 실패:", err));
+}
     </script>
 </body>
 </html>
