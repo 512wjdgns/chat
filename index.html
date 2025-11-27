@@ -203,7 +203,7 @@ const FIXED_LINK = "https://512wjdgns.github.io/chat/";
                 status: function(statusEvent) {
                     if (statusEvent.category === "PNConnectedCategory") {
                         statusDot.style.backgroundColor = "#00a884"; 
-                        headerTitle.innerText = `온라인: ${myName}`;
+                        headerTitle.innerText = `정훈.서버.한국: ${myName}`;
                     }
                 },
                 message: function(event) {
@@ -256,7 +256,7 @@ sendToDiscord(myName, text);
             if (newName) {
                 myName = newName;
                 localStorage.setItem('chat_nickname', myName);
-                headerTitle.innerText = `온라인: ${myName}`;
+                headerTitle.innerText = `정훈.서버.한국: ${myName}`;
             }
         }
 
